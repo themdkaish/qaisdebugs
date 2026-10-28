@@ -1,0 +1,89 @@
+{
+  "name": "qaisdebugs",
+  "version": "0.3.0",
+  "description": "X-ray for Next.js dev servers: see every server-side request (fetch, axios), read server and browser logs in one place, and set breakpoints in server and client components. No code changes.",
+  "keywords": [
+    "axios",
+    "breakpoints",
+    "chrome-devtools-protocol",
+    "debugger",
+    "devtools",
+    "fetch",
+    "inspector",
+    "logs",
+    "network",
+    "next",
+    "next.js",
+    "nextjs",
+    "react",
+    "route-handlers",
+    "rsc",
+    "server-actions",
+    "server-components",
+    "turbopack",
+    "webpack",
+    "mcp",
+    "model-context-protocol",
+    "claude"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/themdkaish/qaisdebugs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/themdkaish/qaisdebugs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/themdkaish/qaisdebugs/issues"
+  },
+  "author": "Mahammad Kaish",
+  "type": "module",
+  "bin": {
+    "qaisdebugs": "bin/qaisdebugs.mjs"
+  },
+  "exports": {
+    "./agent": "./dist/agent/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "assets",
+    "dist",
+    "scripts",
+    "server",
+    "README.md",
+    "LICENSE",
+    "!server/**/*.test.mjs"
+  ],
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "build": "pnpm build:agent && pnpm build:browser && pnpm build:mcp && pnpm build:ui",
+    "build:agent": "tsc -p agent/tsconfig.json",
+    "build:browser": "vite build --config browser/vite.config.ts",
+    "build:mcp": "vite build --config mcp/vite.config.ts",
+    "build:ui": "vite build --config ui/vite.config.ts",
+    "dev:ui": "vite --config ui/vite.config.ts",
+    "start": "node bin/qaisdebugs.mjs start",
+    "test": "vitest run",
+    "type-check": "tsc -p agent/tsconfig.json --noEmit && tsc -p browser/tsconfig.json && tsc -p mcp/tsconfig.json && tsc -p ui/tsconfig.json --noEmit",
+    "prepublishOnly": "pnpm build && pnpm test",
+    "pack:check": "npm pack --dry-run",
+    "postinstall": "node scripts/postinstall.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "source-map-js": "1.2.2",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  }
+}

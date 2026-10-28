@@ -92,6 +92,9 @@ To try it once without installing, `npx qaisdebugs dev` works too.
 ### Works with
 
 - **Next.js 13.4 to 16**, App Router. Pages Router uses the same hooks but is untested.
+- **Vite dev servers** (React and other single-page apps): browser requests, browser logs and
+  client-side breakpoints, with call sites mapped to your source. A Vite app has no server code
+  of its own, so server requests and server breakpoints cover only proxied calls.
 - **webpack and Turbopack.** Turbopack is the default since Next 15, and both work.
 - **Any HTTP client on the server:** `fetch`, axios, got, node-fetch v2, and generated API clients.
 - **Monorepos** with pnpm, yarn or npm workspaces, Turborepo or Nx.
@@ -167,6 +170,24 @@ isn't a qaisdebugs name. All names share one installation and one inspector, and
 working through updates.
 
 ## Using the debugger
+
+<details>
+<summary><b>Sources: tabs, shortcuts and projects</b></summary>
+
+Files open in tabs, like an IDE: click a tab to show it, and its × (or a middle-click) to close it.
+Two tabs with the same name, such as two `page.tsx`, show their folder too.
+
+| Shortcut (macOS / Windows and Linux) | What it does |
+| --- | --- |
+| `⌘P` / `Ctrl+P` | Open a file by name. Add `:42` to open it at line 42. |
+| `⌘F` / `Ctrl+F` | Find in the open file. Enter and Shift+Enter move between matches. |
+| `⌘G` / `Ctrl+G` | Go to a line in the open file. |
+| `⇧⌘F` / `Ctrl+Shift+F` | Search every file in the project. Click a result to open it there. |
+
+When dev servers of more than one project report to the same inspector, Sources asks which
+project to show, and connects the debugger to that project's servers and pages. Each project
+keeps its own tabs; the project name in the toolbar switches between them.
+</details>
 
 <details>
 <summary><b>Server-side breakpoints</b></summary>

@@ -1,6 +1,6 @@
 {
   "name": "qaisdebugs",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "X-ray for Next.js dev servers: see every server-side request (fetch, axios), read server and browser logs in one place, and set breakpoints in server and client components. No code changes.",
   "keywords": [
     "axios",

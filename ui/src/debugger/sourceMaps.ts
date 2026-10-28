@@ -30,6 +30,9 @@ export interface ScriptRecord {
   scriptId: string;
   url: string;
   sourceMapURL?: string;
+  /** Where the script starts, to recognise another debugger's pause before it runs. */
+  startLine?: number;
+  startColumn?: number;
   /** The absolute file the script's URL names, when it is application code (webpack modules). */
   file?: string;
   /** The webpack layer, such as `rsc`, `ssr` or `app-pages-browser`. */
@@ -86,9 +89,33 @@ export function mapLocation(url: string, sourceMapURL: string | undefined): MapL
   return undefined;
 }
 
-/** A script whose map must be fetched: a bundled chunk rather than a webpack module. */
+/**
+ * A script whose files come from its map rather than its URL: a bundled chunk with an external
+ * map, or a Vite module, whose map is inline. A webpack module's URL names its file instead.
+ */
 export function isChunkScript(script: ScriptRecord): boolean {
-  return Boolean(script.map) && !script.file;
+  return !script.file && (Boolean(script.map) || Boolean(script.sourceMapURL?.startsWith('data:')));
+}
+
+/**
+ * Vite names a module's one source relative to the module (`App.tsx`). The map's `file` gives the
+ * module's absolute path when the React plugin wrote it; otherwise the source sits next to the URL
+ * the module was served from, under the app folder (`/src/lib/api.ts`), or at the absolute path
+ * after `/@fs` for files outside it. Absolute, scheme and Turbopack names pass through.
+ */
+export function sourceBesideMapFile(name: string, mapFile: string | undefined, moduleUrl?: string, cwd?: string): string {
+  if (name.startsWith('/') || /^[a-z][a-z0-9+.-]*:/i.test(name) || name.startsWith('[')) return name;
+  if (mapFile?.startsWith('/')) return joinPath(mapFile.slice(0, mapFile.lastIndexOf('/')), name);
+  if (!moduleUrl || !cwd || !/^https?:/.test(moduleUrl)) return name;
+
+  let served: string;
+  try {
+    served = decodeURIComponent(new URL(name, moduleUrl).pathname);
+  } catch {
+    return name;
+  }
+
+  return served.startsWith('/@fs/') ? served.slice('/@fs'.length) : joinPath(cwd, served);
 }
 
 export function decodeInlineSourceMap(sourceMapURL: string | undefined): RawSourceMap | undefined {
@@ -132,7 +159,7 @@ function adoptSources(script: ScriptRecord, raw: RawSourceMap, consumer: SourceM
   const rewritten = (consumer as unknown as { sources?: string[] } | undefined)?.sources ?? rawSourceNames(raw);
   const original = rawSourceNames(raw);
   script.sources = rewritten.map((name, index) => {
-    const rawName = original.length === rewritten.length ? original[index] : name;
+    const rawName = sourceBesideMapFile(original.length === rewritten.length ? original[index] : name, (raw as { file?: string }).file, script.url, options.cwd);
 
     return { raw: name, file: fileFromSourceName(rawName, options) ?? fileFromSourceName(name, options) ?? joinPath(options.cwd, rawName) };
   });

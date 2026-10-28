@@ -32,6 +32,18 @@ describe('classifyIncoming', () => {
     expect(classifyIncoming(request('/en/__nextjs_original-stack-frames', {}, 'POST'))).toBeUndefined();
     expect(classifyIncoming(request('/icon.png'))).toBeUndefined();
   });
+
+  it('leaves out what a Vite dev server serves for itself', () => {
+    expect(classifyIncoming(request('/@vite/client', { accept: '*/*' }))).toBeUndefined();
+    expect(classifyIncoming(request('/@react-refresh', { accept: '*/*' }))).toBeUndefined();
+    expect(classifyIncoming(request('/@fs/work/app/node_modules/vite/dist/client/env.mjs'))).toBeUndefined();
+    expect(classifyIncoming(request('/src/main.tsx', { accept: '*/*', 'sec-fetch-dest': 'script' }))).toBeUndefined();
+    expect(classifyIncoming(request('/src/styles?direct', { 'sec-fetch-dest': 'style' }))).toBeUndefined();
+    // The page itself, client-side routes and a proxied API stay.
+    expect(classifyIncoming(request('/', { accept: 'text/html', 'sec-fetch-dest': 'document' }))).toBe('page');
+    expect(classifyIncoming(request('/projects/12', { accept: 'text/html', 'sec-fetch-dest': 'document' }))).toBe('page');
+    expect(classifyIncoming(request('/api/leads', { accept: 'application/json', 'sec-fetch-dest': 'empty' }))).toBe('browser');
+  });
 });
 
 describe('contextFor', () => {

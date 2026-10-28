@@ -72,6 +72,21 @@ describe('injectPageScript', () => {
     expect(html).toBe(`<!DOCTYPE html><html><head>${TAG}<title>x</title></head><body>hi</body></html>`);
   });
 
+  it('asks for a fresh page, so a cached copy without the script (or with an old one) is not reused', async () => {
+    const seen: Array<string | undefined> = [];
+    const base = await serve((req, res) => {
+      seen.push(req.headers['if-none-match'], req.headers['if-modified-since']);
+      res.setHeader('content-type', 'text/html');
+      res.end('<html><head></head><body></body></html>');
+    });
+
+    const response = await fetch(`${base}/`, { headers: { accept: 'text/html', 'if-none-match': 'W/"253-abc"', 'if-modified-since': 'Wed, 28 Oct 2026 10:00:00 GMT' } });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain(TAG);
+    expect(seen).toEqual([undefined, undefined]);
+  });
+
   it('asks for an uncompressed page and drops a length that would now be wrong', async () => {
     const page = '<html><head></head><body>ok</body></html>';
     const base = await serve((req, res) => {

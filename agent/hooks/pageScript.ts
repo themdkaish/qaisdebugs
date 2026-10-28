@@ -68,6 +68,9 @@ type WriteArgs = [chunk: unknown, encodingOrCallback?: unknown, callback?: unkno
  */
 export function injectPageScript(req: IncomingMessage, res: ServerResponse, tag: string): void {
   delete req.headers['accept-encoding'];
+  // A 304 would leave the browser on its cached copy: one without the script, or with an older one.
+  delete req.headers['if-none-match'];
+  delete req.headers['if-modified-since'];
 
   const originalWrite = res.write;
   const originalEnd = res.end;

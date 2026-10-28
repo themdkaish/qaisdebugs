@@ -42,6 +42,22 @@ export function rawFrames(stack: string | undefined, pageOrigin: string): RawFra
   return frames;
 }
 
+/**
+ * Vite names a module's one source relative to the module (`main.tsx`). The map's `file` gives the
+ * module's absolute path when the React plugin wrote it; otherwise the source sits next to the URL
+ * the module was served from, under the app folder (`/src/lib/api.ts`), or at the absolute path
+ * after `/@fs` for files outside it. Absolute, scheme and Turbopack names pass through.
+ */
+export function sourceBesideMapFile(source: string, mapFile: string | undefined, moduleUrl?: string, cwd?: string): string {
+  if (source.startsWith('/') || /^[a-z][a-z0-9+.-]*:/i.test(source) || source.startsWith('[')) return source;
+  if (mapFile?.startsWith('/')) return normalize(`${mapFile.slice(0, mapFile.lastIndexOf('/'))}/${source}`);
+  if (!moduleUrl || !cwd || !/^https?:/.test(moduleUrl)) return source;
+
+  const served = safeDecode(new URL(source, moduleUrl).pathname);
+
+  return served.startsWith('/@fs/') ? served.slice('/@fs'.length) : normalize(`${cwd.replace(/\/$/, '')}${served}`);
+}
+
 /** A file name from the dev server's answer as an absolute path, or undefined for library code. */
 export function originalFile(file: string | undefined, cwd: string): string | undefined {
   if (!file) return undefined;
@@ -93,15 +109,18 @@ export function createFrameResolver(fetchImpl: Fetch, cwd: string, pageOrigin: s
   const chunkMaps = new Map<string, Promise<SourceMapConsumer | undefined>>();
   let mode: 'batch' | 'single' = readMode();
 
-  /** A Turbopack chunk's source map, from `<chunk>.map`, loaded once per chunk. */
+  /**
+   * The source map of a Turbopack chunk or a Vite module, both served at `<url>.map`. Cached by the
+   * full URL: Vite adds `?t=…` to a module it hot-reloads, which then needs its new map.
+   */
   const chunkMap = (chunkUrl: string): Promise<SourceMapConsumer | undefined> => {
-    const url = chunkUrl.split(/[?#]/)[0];
-    let loading = chunkMaps.get(url);
+    const key = chunkUrl.split('#')[0];
+    let loading = chunkMaps.get(key);
     if (!loading) {
-      loading = fetchImpl(`${url}.map`, { signal: timeout() })
+      loading = fetchImpl(`${key.split('?')[0]}.map`, { signal: timeout() })
         .then(async (response) => (response.ok ? new SourceMapConsumer((await response.json()) as RawSourceMap) : undefined))
         .catch(() => undefined);
-      chunkMaps.set(url, loading);
+      chunkMaps.set(key, loading);
     }
 
     return loading;
@@ -111,7 +130,7 @@ export function createFrameResolver(fetchImpl: Fetch, cwd: string, pageOrigin: s
     const consumer = await chunkMap(raw.file);
     const position = consumer?.originalPositionFor({ line: raw.line, column: raw.column - 1 });
     if (!position?.source || !position.line) return undefined;
-    const file = originalFile(position.source, cwd);
+    const file = originalFile(sourceBesideMapFile(position.source, (consumer as unknown as { file?: string }).file, raw.file, cwd), cwd);
 
     return file ? { file, line: position.line, column: (position.column ?? 0) + 1, fn: raw.methodName || undefined } : undefined;
   };

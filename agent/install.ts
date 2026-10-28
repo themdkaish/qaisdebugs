@@ -21,17 +21,20 @@ import { wallClock } from './shared/clock.js';
  *
  * Loaded into every Node process started with `NODE_OPTIONS=--import .../dist/agent/index.js`,
  * which includes pnpm, Nx, the `next` launcher and Next's worker children. Only the process that
- * actually serves HTTP gets the hooks; everything else returns immediately.
+ * actually serves HTTP gets the hooks: Next's server, or a Vite dev server. Everything else
+ * returns immediately.
  */
 
 export type ProcessRole = 'server' | 'launcher';
 
 const SERVER_ENTRY = /[\\/]next[\\/]dist[\\/]server[\\/]lib[\\/]start-server\.js$/;
+/** Vite's command, run as its own file or through the `node_modules/.bin/vite` link. */
+const VITE_ENTRY = /[\\/]vite[\\/]bin[\\/]vite\.js$|[\\/]node_modules[\\/]\.bin[\\/]vite$/;
 const LAUNCHER_ENTRY = /[\\/]next[\\/]dist[\\/]bin[\\/]next$/;
 
 export function detectRole(entry: string | undefined): ProcessRole | undefined {
   if (!entry) return undefined;
-  if (SERVER_ENTRY.test(entry)) return 'server';
+  if (SERVER_ENTRY.test(entry) || VITE_ENTRY.test(entry)) return 'server';
   if (LAUNCHER_ENTRY.test(entry)) return 'launcher';
 
   return undefined;

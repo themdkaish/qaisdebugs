@@ -10,6 +10,14 @@ describe('detectRole', () => {
     expect(detectRole('/repo/node_modules/nx/bin/nx.js')).toBeUndefined();
     expect(detectRole(undefined)).toBeUndefined();
   });
+
+  it('treats a Vite dev server as the server, however it is started', () => {
+    expect(detectRole('/work/react-app/node_modules/.bin/vite')).toBe('server');
+    expect(detectRole('/work/react-app/node_modules/vite/bin/vite.js')).toBe('server');
+    expect(detectRole('/work/react-app/node_modules/.pnpm/vite@6.3.5/node_modules/vite/bin/vite.js')).toBe('server');
+    expect(detectRole('/work/react-app/node_modules/vitest/vitest.mjs')).toBeUndefined();
+    expect(detectRole('/work/react-app/node_modules/.bin/vite-node')).toBeUndefined();
+  });
 });
 
 describe('appNameFrom', () => {

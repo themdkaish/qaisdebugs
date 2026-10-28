@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ParseStackOptions } from '../../../agent/shared/initiator';
 import type { DevtoolsEvent, LogLevel } from '../events';
 import { CdpClient } from './cdp';
+import { isForeignScriptStartPause, type RawPause } from './pauses';
 import { type PropertyDescriptor, type RemoteObject, describe } from './remoteObject';
 import { type ScriptRecord, fileFromScriptUrl, generatedPosition, isChunkScript, loadSources, mapLocation, originalPosition } from './sourceMaps';
 import { type DebugTarget, targetKey, targetLabel, targetWsUrl } from './targets';
@@ -71,6 +72,10 @@ interface Session {
   paused?: PausedState;
   scriptCount: number;
   instrumentation: boolean;
+  /** This session asked for a pause or a step and has not paused since, so the next pause is its own. */
+  requested: boolean;
+  /** Counts resumes, so a pause resumed before it was shown is dropped. */
+  resumes: number;
   error?: string;
 }
 
@@ -276,6 +281,12 @@ export function useDebugger(onPausedAt?: (file: string, line: number) => void, i
         return;
       }
 
+      const requested = session.requested;
+      session.requested = false;
+      const resumes = session.resumes;
+      const readSource = (scriptId: string): Promise<string | undefined> =>
+        session.cdp.send<{ scriptSource: string }>('Debugger.getScriptSource', { scriptId }).then((result) => result.scriptSource);
+
       const reason = hitBreakpoints?.length ? 'breakpoint' : rawReason;
       // Mapping may fetch a chunk's map, so the frames are built asynchronously. A chunk holding
       // only dependencies is left unmapped: its map is large and its frames are framework frames.
@@ -297,8 +308,12 @@ export function useDebugger(onPausedAt?: (file: string, line: number) => void, i
         };
       };
 
-      void Promise.all(callFrames.map(mapFrame)).then((frames) => {
-        if (!sessions.current.has(session.key)) return;
+      // Another debugger's pause before a script runs is not this session's to show or resume, and a
+      // pause resumed while its frames were being mapped is over.
+      void isForeignScriptStartPause(params as RawPause, (scriptId) => session.scripts.get(scriptId), requested, readSource).then(async (foreign) => {
+        if (foreign) return;
+        const frames = await Promise.all(callFrames.map(mapFrame));
+        if (!sessions.current.has(session.key) || session.resumes !== resumes) return;
         const selected = Math.max(0, frames.findIndex((frame) => frame.isApp));
         session.paused = { reason, frames, selected, exception: reason === 'exception' ? data : undefined };
         session.status = 'paused';
@@ -417,6 +432,8 @@ export function useDebugger(onPausedAt?: (file: string, line: number) => void, i
         status: 'connecting',
         scriptCount: 0,
         instrumentation: false,
+        requested: false,
+        resumes: 0,
       };
       sessions.current.set(key, session);
       // A new connection becomes the active one unless another session is paused: the pause is
@@ -427,18 +444,23 @@ export function useDebugger(onPausedAt?: (file: string, line: number) => void, i
       cdp.onClose = (why) => removeSession(key, `connection ${why}`);
 
       cdp.on('Debugger.scriptParsed', (params) => {
-        const { scriptId, url, sourceMapURL } = params as { scriptId: string; url: string; sourceMapURL?: string };
+        const { scriptId, url, sourceMapURL, startLine, startColumn } = params as { scriptId: string; url: string; sourceMapURL?: string; startLine?: number; startColumn?: number };
         // React's server-reference stubs are `about://React/Server/...` scripts; nothing to debug there.
         if (!url || url.startsWith('about:')) return;
         const { file, layer } = fileFromScriptUrl(url, session.options);
         const map = file ? undefined : mapLocation(url, sourceMapURL);
-        session.scripts.set(scriptId, { scriptId, url, sourceMapURL: sourceMapURL || undefined, file, layer, map });
+        const record: ScriptRecord = { scriptId, url, sourceMapURL: sourceMapURL || undefined, startLine, startColumn, file, layer, map };
+        session.scripts.set(scriptId, record);
         session.scriptCount = session.scripts.size;
 
-        if (file || map) void applyPendingForScript(session, scriptId).then(() => syncInstrumentation(session));
+        if (file || isChunkScript(record)) void applyPendingForScript(session, scriptId).then(() => syncInstrumentation(session));
       });
       cdp.on('Debugger.paused', (params) => handlePaused(session, params));
+      // A dev server that exits (a crash, or Next restarting it) waits for every attached debugger
+      // to go before it can; leave at once, or it keeps its port and answers nothing.
+      cdp.on('NodeRuntime.waitingForDisconnect', () => removeSession(key));
       cdp.on('Debugger.resumed', () => {
+        session.resumes += 1;
         session.paused = undefined;
         session.status = 'connected';
         publish();
@@ -449,6 +471,7 @@ export function useDebugger(onPausedAt?: (file: string, line: number) => void, i
         await cdp.send('Debugger.enable', { maxScriptsCacheSize: 10_000_000 });
         await cdp.send('Debugger.setPauseOnExceptions', { state: pauseOnExceptions });
         if (target.kind === 'page') await cdp.send('Runtime.enable');
+        else await cdp.send('NodeRuntime.notifyWhenWaitingForDisconnect', { enabled: true }).catch(() => undefined);
         session.status = 'connected';
         publish();
         for (const breakpoint of breakpointsRef.current) recordIds(key, breakpoint.key, await applyBreakpointTo(session, breakpoint));
@@ -507,6 +530,7 @@ export function useDebugger(onPausedAt?: (file: string, line: number) => void, i
   const command = useCallback((method: string) => {
     const session = activeSession();
     if (!session) return;
+    session.requested = method !== 'Debugger.resume';
     void session.cdp.send(method).catch((reason) => setError(`${session.label}: ${reason instanceof Error ? reason.message : String(reason)}`));
   }, []);
 

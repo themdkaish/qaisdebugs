@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { type ScriptRecord, ensureConsumer, generatedPosition, mapLocation, originalPosition } from './sourceMaps';
+import { type ScriptRecord, ensureConsumer, generatedPosition, isChunkScript, loadSources, mapLocation, originalPosition } from './sourceMaps';
 
 /** A map with one mapping per line: original line N of the only source is generated line N+2. */
-function inlineMap(sourceName: string, lines: number): string {
+function inlineMap(sourceName: string, lines: number, file = 'x.js'): string {
   const vlq = (value: number): string => {
     let v = value < 0 ? (-value << 1) | 1 : value << 1;
     let out = '';
@@ -17,7 +17,7 @@ function inlineMap(sourceName: string, lines: number): string {
   };
   let mappings = ';;';
   for (let line = 1; line <= lines; line += 1) mappings += `${vlq(0)}${vlq(0)}${vlq(line === 1 ? 0 : 1)}${vlq(0)};`;
-  const map = { version: 3, file: 'x.js', sources: [sourceName], sourcesContent: [''], names: [], mappings };
+  const map = { version: 3, file, sources: [sourceName], sourcesContent: [''], names: [], mappings };
 
   return `data:application/json;charset=utf-8;base64,${btoa(JSON.stringify(map))}`;
 }
@@ -100,6 +100,38 @@ describe('source maps of webpack modules', () => {
     expect(chunk.sources?.[0].file).toBe('/proj/src/app/page.tsx');
     expect(await generatedPosition(chunk, '/proj/src/app/page.tsx', 4, turbo)).toEqual({ lineNumber: 15, columnNumber: 0 });
     expect(await originalPosition(chunk, 15, 0, turbo)).toEqual({ file: '/proj/src/app/page.tsx', line: 4, column: 0 });
+  });
+});
+
+describe('source maps of Vite modules', () => {
+  const vite = { cwd: '/work/react-app', repoRoot: '/work/react-app', packageName: 'react-app' };
+  // Vite serves each module at its own path with an inline map naming the source next to the map's `file`.
+  const module = (): ScriptRecord => ({
+    scriptId: '7',
+    url: 'http://localhost:5174/src/app/App.tsx?t=1730123',
+    sourceMapURL: inlineMap('App.tsx', 6, '/work/react-app/src/app/App.tsx'),
+  });
+
+  it('treats a module with an inline map as one whose files come from its map', () => {
+    expect(isChunkScript(module())).toBe(true);
+    expect(isChunkScript({ scriptId: '8', url: 'webpack-internal:///(rsc)/./app/page.tsx', file: '/work/app/page.tsx', sourceMapURL: inlineMap('page.tsx', 2) })).toBe(false);
+    expect(isChunkScript({ scriptId: '9', url: 'http://localhost:5174/@vite/client' })).toBe(false);
+  });
+
+  it("resolves a plain .ts module's source from its URL when the map has no file", async () => {
+    const api: ScriptRecord = { scriptId: '10', url: 'http://localhost:5174/src/app/lib/api.ts?t=5', sourceMapURL: inlineMap('api.ts', 4, '') };
+    const outside: ScriptRecord = { scriptId: '11', url: 'http://localhost:5174/@fs/work/shared/fetch.ts', sourceMapURL: inlineMap('fetch.ts', 4, '') };
+
+    expect((await loadSources(api, vite)).map((source) => source.file)).toEqual(['/work/react-app/src/app/lib/api.ts']);
+    expect((await loadSources(outside, vite)).map((source) => source.file)).toEqual(['/work/shared/fetch.ts']);
+  });
+
+  it("resolves the source next to the module's file, both ways", async () => {
+    const script = module();
+
+    expect((await loadSources(script, vite)).map((source) => source.file)).toEqual(['/work/react-app/src/app/App.tsx']);
+    expect(await generatedPosition(script, '/work/react-app/src/app/App.tsx', 4, vite)).toEqual({ lineNumber: 5, columnNumber: 0 });
+    expect(await originalPosition(script, 5, 0, vite)).toEqual({ file: '/work/react-app/src/app/App.tsx', line: 4, column: 0 });
   });
 });
 

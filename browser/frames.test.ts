@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createFrameResolver, originalFile, rawFrames } from './frames.js';
+import { SourceMapGenerator } from 'source-map-js';
+import { createFrameResolver, originalFile, rawFrames, sourceBesideMapFile } from './frames.js';
 
 const page = 'http://localhost:3000';
 const stack = [
@@ -31,6 +32,27 @@ describe('originalFile', () => {
     expect(originalFile('/work/apps/gov-portal/src/a.ts', cwd)).toBe('/work/apps/gov-portal/src/a.ts');
     expect(originalFile('node_modules/next/dist/client/index.js', cwd)).toBeUndefined();
     expect(originalFile(undefined, cwd)).toBeUndefined();
+  });
+});
+
+describe('sourceBesideMapFile', () => {
+  it("puts a Vite module's source next to the map's file", () => {
+    expect(sourceBesideMapFile('main.tsx', '/work/react-app/src/main.tsx')).toBe('/work/react-app/src/main.tsx');
+    expect(sourceBesideMapFile('../lib/api.ts', '/work/react-app/src/app/App.tsx')).toBe('/work/react-app/src/lib/api.ts');
+  });
+
+  it('leaves absolute, scheme and Turbopack sources, and maps without an absolute file, alone', () => {
+    expect(sourceBesideMapFile('/work/x.ts', '/work/react-app/src/main.tsx')).toBe('/work/x.ts');
+    expect(sourceBesideMapFile('turbopack:///[project]/app/page.tsx', '/work/chunk.js')).toBe('turbopack:///[project]/app/page.tsx');
+    expect(sourceBesideMapFile('[project]/app/page.tsx', '/work/chunk.js')).toBe('[project]/app/page.tsx');
+    expect(sourceBesideMapFile('main.tsx', 'main.js')).toBe('main.tsx');
+    expect(sourceBesideMapFile('main.tsx', undefined)).toBe('main.tsx');
+  });
+
+  it("uses the module's URL when the map has no file, as Vite's maps of plain .ts modules", () => {
+    expect(sourceBesideMapFile('api.ts', undefined, 'http://localhost:5174/src/app/lib/api.ts?t=17', '/work/react-app')).toBe('/work/react-app/src/app/lib/api.ts');
+    expect(sourceBesideMapFile('fetch.ts', undefined, 'http://localhost:5174/@fs/work/shared/src/fetch.ts', '/work/react-app')).toBe('/work/shared/src/fetch.ts');
+    expect(sourceBesideMapFile('[project]/app/page.tsx', undefined, 'http://localhost:3000/_next/static/chunks/x.js', '/work/app')).toBe('[project]/app/page.tsx');
   });
 });
 
@@ -99,5 +121,20 @@ describe('createFrameResolver', () => {
 
     expect(await ignored(stack)).toEqual([]);
     expect(await broken(stack)).toEqual([]);
+  });
+
+  it("maps a Vite module's frame through the map Vite serves at <module>.map", async () => {
+    const generator = new SourceMapGenerator({ file: '/work/react-app/src/app/App.tsx' });
+    generator.addMapping({ generated: { line: 40, column: 4 }, original: { line: 12, column: 2 }, source: 'App.tsx' });
+    const calls: string[] = [];
+    const fetchImpl = async (url: string): Promise<Response> => {
+      calls.push(url);
+      return json(JSON.parse(generator.toString()));
+    };
+    const resolve = createFrameResolver(fetchImpl as typeof fetch, '/work/react-app', 'http://localhost:5174');
+    const viteStack = 'Error\n    at loadLeads (http://localhost:5174/src/app/App.tsx?t=1730123:40:5)';
+
+    expect(await resolve(viteStack)).toEqual([{ file: '/work/react-app/src/app/App.tsx', line: 12, column: 3, fn: 'loadLeads' }]);
+    expect(calls).toEqual(['http://localhost:5174/src/app/App.tsx.map']);
   });
 });

@@ -158,6 +158,9 @@ export function contextFor(
   return { traceId, parentId: id, pagePath };
 }
 
+/** Fetch destinations of assets: scripts, styles, images and the like are never the app's own requests. */
+const ASSET_DESTINATIONS = new Set(['script', 'style', 'image', 'font', 'audio', 'video', 'track', 'worker', 'sharedworker', 'serviceworker', 'manifest', 'audioworklet', 'paintworklet', 'object', 'embed']);
+
 /** `page` for documents and RSC payloads, `browser` for API routes, nothing for assets and HMR. */
 export function classifyIncoming(req: IncomingMessage): RequestOrigin | undefined {
   const url = req.url ?? '/';
@@ -166,6 +169,9 @@ export function classifyIncoming(req: IncomingMessage): RequestOrigin | undefine
   if (pathname.startsWith('/_next') || pathname.startsWith('/__next') || pathname.startsWith('/favicon')) return undefined;
   // Next's dev endpoints, also when locale middleware has redirected them under `/en/…`.
   if (pathname.includes('/__nextjs')) return undefined;
+  // Vite's own modules (`/@vite/client`, `/@fs/…`, `/@id/…`, `/@react-refresh`) and endpoints.
+  if (pathname.startsWith('/@') || pathname.startsWith('/__vite')) return undefined;
+  if (ASSET_DESTINATIONS.has(header(req, 'sec-fetch-dest') ?? '')) return undefined;
   if (pathname.startsWith('/api/')) return 'browser';
   if (/\.[a-z0-9]{1,5}$/i.test(pathname)) return undefined;
   if (header(req, 'rsc') === '1' || header(req, 'next-router-prefetch') === '1') return 'page';

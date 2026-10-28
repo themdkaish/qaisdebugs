@@ -10,6 +10,7 @@
 import type { ParseStackOptions } from '../agent/shared/initiator.js';
 import type { AgentEvent } from '../agent/shared/events.js';
 import { CdpClient } from '../ui/src/debugger/cdp';
+import { isForeignScriptStartPause, type RawPause } from '../ui/src/debugger/pauses';
 import { type PropertyDescriptor, type RemoteObject, describe } from '../ui/src/debugger/remoteObject';
 import { type ScriptRecord, fileFromScriptUrl, generatedPosition, isChunkScript, loadSources, mapLocation, originalPosition } from '../ui/src/debugger/sourceMaps';
 import { type PageTarget, agentServingPage } from '../ui/src/debugger/targets';
@@ -53,6 +54,10 @@ interface Session {
   /** Scripts whose files are still being worked out (a chunk's map is fetched for that). */
   indexing: Set<Promise<void>>;
   instrumentation: boolean;
+  /** This session asked for a pause or a step and has not paused since, so the next pause is its own. */
+  requested: boolean;
+  /** Counts resumes, so a pause resumed before it was recorded is dropped. */
+  resumes: number;
   pause?: Pause;
 }
 
@@ -180,7 +185,10 @@ export class Debugger {
   async step(action: 'resume' | 'over' | 'into' | 'out' | 'pause'): Promise<void> {
     if (action === 'pause') {
       await this.attach();
-      for (const session of this.sessions.values()) await session.cdp.send('Debugger.pause').catch(() => undefined);
+      for (const session of this.sessions.values()) {
+        session.requested = true;
+        await session.cdp.send('Debugger.pause').catch(() => undefined);
+      }
 
       return;
     }
@@ -188,7 +196,10 @@ export class Debugger {
     if (!pause) throw new Error('nothing is paused');
     const session = this.sessions.get(pause.sessionKey);
     const method = { resume: 'Debugger.resume', over: 'Debugger.stepOver', into: 'Debugger.stepInto', out: 'Debugger.stepOut' }[action];
-    if (session) session.pause = undefined;
+    if (session) {
+      session.pause = undefined;
+      session.requested = action !== 'resume';
+    }
     await session?.cdp.send(method);
   }
 
@@ -274,16 +285,19 @@ export class Debugger {
         scriptsByFile: new Map(),
         indexing: new Set(),
         instrumentation: false,
+        requested: false,
+        resumes: 0,
       };
       this.sessions.set(target.key, session);
       cdp.onClose = () => this.sessions.delete(target.key);
       cdp.on('Debugger.scriptParsed', (params) => {
-        const { scriptId, url, sourceMapURL } = params as { scriptId: string; url: string; sourceMapURL?: string };
+        const { scriptId, url, sourceMapURL, startLine, startColumn } = params as { scriptId: string; url: string; sourceMapURL?: string; startLine?: number; startColumn?: number };
         if (!url || url.startsWith('about:')) return;
         const { file, layer } = fileFromScriptUrl(url, session.options);
         const map = file ? undefined : mapLocation(url, sourceMapURL);
-        session.scripts.set(scriptId, { scriptId, url, sourceMapURL: sourceMapURL || undefined, file, layer, map });
-        if (file || map) {
+        const record: ScriptRecord = { scriptId, url, sourceMapURL: sourceMapURL || undefined, startLine, startColumn, file, layer, map };
+        session.scripts.set(scriptId, record);
+        if (file || isChunkScript(record)) {
           const indexed = this.placePending(session, scriptId)
             .then(() => this.syncInstrumentation(session))
             .finally(() => session.indexing.delete(indexed));
@@ -291,10 +305,18 @@ export class Debugger {
         }
       });
       cdp.on('Debugger.paused', (params) => void this.onPaused(session, params));
+      // A dev server that exits (a crash, or Next restarting it) waits for every attached debugger
+      // to go before it can; leave at once, or it keeps its port and answers nothing.
+      cdp.on('NodeRuntime.waitingForDisconnect', () => {
+        this.sessions.delete(target.key);
+        cdp.close();
+      });
       cdp.on('Debugger.resumed', () => {
+        session.resumes += 1;
         session.pause = undefined;
       });
       await cdp.send('Debugger.enable', { maxScriptsCacheSize: 10_000_000 });
+      if (!target.page) await cdp.send('NodeRuntime.notifyWhenWaitingForDisconnect', { enabled: true }).catch(() => undefined);
       await this.settle(session);
       await cdp.send('Debugger.setPauseOnExceptions', { state: this.pauseOnExceptions });
       for (const breakpoint of this.breakpoints.values()) this.record(session, breakpoint, await this.place(session, breakpoint));
@@ -400,7 +422,7 @@ export class Debugger {
   private async onPaused(session: Session, params: unknown): Promise<void> {
     const { reason: rawReason, callFrames, data, hitBreakpoints } = params as { reason: string; callFrames: RawCallFrame[]; data?: RemoteObject & { scriptId?: string }; hitBreakpoints?: string[] };
     if (rawReason === 'instrumentation') {
-      // Another debugger (the inspector page) asked for this pause; it resumes when it is done.
+      // Asked for before this session turned its own off; whoever still wants it resumes.
       if (!session.instrumentation) return;
       if (data?.scriptId) await this.placePending(session, data.scriptId).catch(() => undefined);
       await session.cdp.send('Debugger.resume').catch(() => undefined);
@@ -408,6 +430,13 @@ export class Debugger {
 
       return;
     }
+    // Another debugger's (an inspector page's) pause before a script runs: it resumes when it is done.
+    const requested = session.requested;
+    session.requested = false;
+    const resumes = session.resumes;
+    const readSource = (scriptId: string): Promise<string | undefined> =>
+      session.cdp.send<{ scriptSource: string }>('Debugger.getScriptSource', { scriptId }).then((result) => result.scriptSource);
+    if (await isForeignScriptStartPause(params as RawPause, (scriptId) => session.scripts.get(scriptId), requested, readSource)) return;
 
     const frames = await Promise.all(
       callFrames.map(async (frame): Promise<Frame> => {
@@ -426,6 +455,8 @@ export class Debugger {
         };
       })
     );
+    // Resumed while the frames were being mapped: that pause is over.
+    if (session.resumes !== resumes) return;
     const pause: Pause = {
       sessionKey: session.key,
       label: session.label,

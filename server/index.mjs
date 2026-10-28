@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 import { pruneAgents } from './agents.mjs';
 import { chromeVersion, launchChrome, listTargets, openInChrome } from './chrome.mjs';
 import { dataDir as resolveDataDir } from './paths.mjs';
+import { projectRoots, rootContaining } from './projects.mjs';
+import { searchFiles, searchPattern } from './search.mjs';
 
 /** The command name the developer used (`qaisdebugs`, or a personal one such as `malaydebugs`). */
 const BRAND = process.env.QAISDEBUGS_BRAND || 'qaisdebugs';
@@ -27,7 +29,7 @@ const dataDir = resolveDataDir();
 
 const args = parseArgs(process.argv.slice(2));
 const config = loadConfig(args.repo ?? process.env.QAISDEBUGS_REPO ?? process.cwd());
-/** Source snippets are read from here and nowhere else. */
+/** The project the collector was started for. Sources are read from it and from the projects of running dev servers. */
 const repoRoot = path.resolve(args.repo ?? process.env.QAISDEBUGS_REPO ?? process.cwd());
 const HOST = '127.0.0.1';
 const PORT = Number(args.port ?? process.env.QAISDEBUGS_PORT ?? config.port ?? 4983);
@@ -222,24 +224,12 @@ async function handleSnippet(url, res) {
   const line = Number(url.searchParams.get('line') ?? 0);
   const context = Math.min(Number(url.searchParams.get('context') ?? 12), 60);
 
-  if (!file || !path.isAbsolute(file)) {
-    sendJson(res, 400, { error: 'file must be an absolute path' });
+  const resolved = await resolveProjectFile(file, 'file');
+  if (resolved.error) {
+    sendJson(res, resolved.status, { error: resolved.error });
     return;
   }
-
-  let real;
-  try {
-    real = await fs.realpath(path.resolve(file));
-  } catch {
-    sendJson(res, 404, { error: 'file not found' });
-    return;
-  }
-
-  const repoReal = await fs.realpath(repoRoot);
-  if (!real.startsWith(repoReal + path.sep)) {
-    sendJson(res, 403, { error: 'file is outside the repository' });
-    return;
-  }
+  const { real, root } = resolved;
 
   const stat = await fs.stat(real);
   if (!stat.isFile() || stat.size > MAX_SNIPPET_FILE_BYTES) {
@@ -253,7 +243,7 @@ async function handleSnippet(url, res) {
 
   sendJson(res, 200, {
     file: real,
-    relative: path.relative(repoReal, real),
+    relative: path.relative(root, real),
     line,
     start,
     end,
@@ -266,16 +256,57 @@ const SOURCE_SKIP = new Set(['node_modules', 'dist', 'build', 'out', '.next', '.
 const SOURCE_EXT = /\.(tsx?|jsx?|mjs|cjs|mts|cts|json|css|scss|sass|less|md|mdx|graphql|gql|env\.example)$/;
 const SOURCE_MAX_FILES = 40_000;
 const SOURCE_MAX_DEPTH = 14;
-let sourceTreeCache = null;
+const SEARCH_MAX_FILE_BYTES = 1024 * 1024;
+/** Each project's tree, by real root path. */
+const sourceTreeCache = new Map();
+
+/** The real paths of every project sources may be read from: the collector's own, then each running dev server's. */
+async function allowedRoots() {
+  const roots = [];
+  for (const root of projectRoots(repoRoot, [...agents.values()])) {
+    try {
+      roots.push(await fs.realpath(root));
+    } catch {
+      // A project folder that is gone.
+    }
+  }
+  return [...new Set(roots)];
+}
+
+/** `root` from a request, when it is one of the projects; the collector's own project when it is not given. */
+async function chooseRoot(requested) {
+  const roots = await allowedRoots();
+  if (!requested) return roots[0];
+  try {
+    const real = await fs.realpath(requested);
+    return roots.includes(real) ? real : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** An absolute path inside one of the projects, as { real, root }, or { status, error }. */
+async function resolveProjectFile(file, what) {
+  if (!file || !path.isAbsolute(file)) return { status: 400, error: `${what} must be an absolute path` };
+  let real;
+  try {
+    real = await fs.realpath(path.resolve(file));
+  } catch {
+    return { status: 404, error: `${what} not found` };
+  }
+  const root = rootContaining(real, await allowedRoots());
+  if (!root) return { status: 403, error: `${what} is outside the projects ${BRAND} serves` };
+  return { real, root };
+}
 
 /**
- * The repository's sources as a nested tree: everything under the repo root except dependencies,
- * build output and dot folders, plus whatever `sources.ignore` in qaisdebugs.config.json names.
+ * A project's sources as a nested tree: everything under its root except dependencies, build
+ * output and dot folders, plus whatever `sources.ignore` in qaisdebugs.config.json names.
  * Rebuilt at most every 10 s. Capped so a huge monorepo cannot stall the collector.
  */
-async function sourceTree() {
-  if (sourceTreeCache && Date.now() - sourceTreeCache.at < 10_000) return sourceTreeCache.tree;
-  const repoReal = await fs.realpath(repoRoot);
+async function sourceTree(root) {
+  const cached = sourceTreeCache.get(root);
+  if (cached && Date.now() - cached.at < 10_000) return cached.tree;
   const ignore = new Set([...SOURCE_SKIP, ...(config.sources?.ignore ?? [])]);
   let count = 0;
 
@@ -305,35 +336,74 @@ async function sourceTree() {
     return [...dirs, ...files];
   }
 
-  const tree = await walk(repoReal, 0);
-  sourceTreeCache = { at: Date.now(), tree };
+  const tree = await walk(root, 0);
+  sourceTreeCache.set(root, { at: Date.now(), tree });
   return tree;
 }
 
-async function handleSourceFile(url, res) {
-  const file = url.searchParams.get('file') ?? '';
-  if (!file || !path.isAbsolute(file)) {
-    sendJson(res, 400, { error: 'file must be an absolute path' });
+async function handleSourceTree(url, res) {
+  const root = await chooseRoot(url.searchParams.get('root'));
+  if (!root) {
+    sendJson(res, 403, { error: `not a project ${BRAND} serves` });
     return;
   }
-  let real;
+  sendJson(res, 200, { repoRoot: root, tree: await sourceTree(root) });
+}
+
+function treeFiles(nodes, out = []) {
+  for (const node of nodes) {
+    if (node.children) treeFiles(node.children, out);
+    else out.push(node.path);
+  }
+  return out;
+}
+
+async function readSearchable(file) {
   try {
-    real = await fs.realpath(path.resolve(file));
+    const stat = await fs.stat(file);
+    return stat.size > SEARCH_MAX_FILE_BYTES ? undefined : await fs.readFile(file, 'utf8');
   } catch {
-    sendJson(res, 404, { error: 'file not found' });
+    return undefined;
+  }
+}
+
+/** Cmd/Ctrl+Shift+F: `q`, with `case`, `regex` and `word` set to 1 to turn those on, in project `root`. */
+async function handleSourceSearch(url, res) {
+  const root = await chooseRoot(url.searchParams.get('root'));
+  if (!root) {
+    sendJson(res, 403, { error: `not a project ${BRAND} serves` });
     return;
   }
-  const repoReal = await fs.realpath(repoRoot);
-  if (!real.startsWith(repoReal + path.sep)) {
-    sendJson(res, 403, { error: 'file is outside the repository' });
+  const query = url.searchParams.get('q') ?? '';
+  if (!query) {
+    sendJson(res, 200, { root, results: [], total: 0, searched: 0, truncated: false });
     return;
   }
+  const flag = (name) => url.searchParams.get(name) === '1';
+  let pattern;
+  try {
+    pattern = searchPattern(query, { matchCase: flag('case'), regex: flag('regex'), wholeWord: flag('word') });
+  } catch (error) {
+    sendJson(res, 400, { error: error.message });
+    return;
+  }
+  const result = await searchFiles(treeFiles(await sourceTree(root)), pattern, readSearchable);
+  sendJson(res, 200, { root, ...result, results: result.results.map((entry) => ({ ...entry, relative: path.relative(root, entry.file) })) });
+}
+
+async function handleSourceFile(url, res) {
+  const resolved = await resolveProjectFile(url.searchParams.get('file') ?? '', 'file');
+  if (resolved.error) {
+    sendJson(res, resolved.status, { error: resolved.error });
+    return;
+  }
+  const { real, root } = resolved;
   const stat = await fs.stat(real);
   if (!stat.isFile() || stat.size > MAX_SNIPPET_FILE_BYTES) {
     sendJson(res, 413, { error: 'not a readable source file' });
     return;
   }
-  sendJson(res, 200, { file: real, relative: path.relative(repoReal, real), content: await fs.readFile(real, 'utf8'), mtime: stat.mtimeMs });
+  sendJson(res, 200, { file: real, relative: path.relative(root, real), content: await fs.readFile(real, 'utf8'), mtime: stat.mtimeMs });
 }
 
 const MAX_MAP_BYTES = 64 * 1024 * 1024;
@@ -356,22 +426,12 @@ async function handleSourceMap(url, res) {
   let version;
 
   if (file) {
-    if (!path.isAbsolute(file)) {
-      sendJson(res, 400, { error: 'file must be an absolute path' });
+    const resolved = await resolveProjectFile(file, 'map');
+    if (resolved.error) {
+      sendJson(res, resolved.status, { error: resolved.error });
       return;
     }
-    let real;
-    try {
-      real = await fs.realpath(path.resolve(file));
-    } catch {
-      sendJson(res, 404, { error: 'map not found' });
-      return;
-    }
-    const repoReal = await fs.realpath(repoRoot);
-    if (!real.startsWith(repoReal + path.sep)) {
-      sendJson(res, 403, { error: 'map is outside the repository' });
-      return;
-    }
+    const { real } = resolved;
     const stat = await fs.stat(real);
     if (!stat.isFile() || stat.size > MAX_MAP_BYTES) {
       sendJson(res, 413, { error: 'not a readable source map' });
@@ -558,7 +618,9 @@ const server = createServer(async (req, res) => {
     } else if (req.method === 'POST' && url.pathname === '/clear') {
       await handleClear(req, res);
     } else if (req.method === 'GET' && url.pathname === '/sources/tree') {
-      sendJson(res, 200, { repoRoot: await fs.realpath(repoRoot), tree: await sourceTree() });
+      await handleSourceTree(url, res);
+    } else if (req.method === 'GET' && url.pathname === '/sources/search') {
+      await handleSourceSearch(url, res);
     } else if (req.method === 'GET' && url.pathname === '/sources/file') {
       await handleSourceFile(url, res);
     } else if (req.method === 'GET' && url.pathname === '/sources/map') {

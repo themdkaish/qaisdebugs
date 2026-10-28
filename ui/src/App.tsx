@@ -205,7 +205,7 @@ export function App(): JSX.Element {
       <main className="min-h-0 flex-1">
         {/* The Sources view stays mounted so a debugger session survives switching views. */}
         <div className={view === 'sources' ? 'h-full' : 'hidden'}>
-          <SourcesView agents={feed.agents} requested={requestedSource} onPaused={() => setView('sources')} />
+          <SourcesView agents={feed.agents} requested={requestedSource} visible={view === 'sources'} onPaused={() => setView('sources')} onShow={() => setView('sources')} />
         </div>
         {view === 'logs' && <LogsView entries={visibleLogs} onTrace={showTrace} onOpenSource={openSource} />}
         {view === 'network' && (

@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>qaisdebugs: Next.js network inspector, logs and debugger</title>
-  <meta name="description" content="qaisdebugs: a free Next.js dev tool. See every server and browser request, all logs in one place, and set breakpoints in server and client components.">
-  <meta name="keywords" content="qaisdebugs, Next.js debugger, Next.js network inspector, server components network, Next.js server logs, Next.js breakpoints, axios server requests, Turbopack debugging, MCP Claude debugging">
+  <title>qaisdebugs: Next.js debugging tool (network, logs, breakpoints)</title>
+  <meta name="description" content="A free Next.js debugging tool. See every server and browser request, all logs in one place, and set breakpoints in Server and Client Components.">
+  <meta name="keywords" content="qaisdebugs, Next.js debugging tool, debug Next.js, Next.js debugger, Next.js devtools, Next.js network inspector, server-side requests, Next.js server logs, Next.js breakpoints, Server Components debugging, Route Handlers, Server Actions, Turbopack, MCP">
   <meta name="author" content="Mahammad Kaish">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="theme-color" content="#0a0e1a">
@@ -14,7 +14,7 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="qaisdebugs">
-  <meta property="og:title" content="qaisdebugs: see everything your Next.js app does">
+  <meta property="og:title" content="qaisdebugs: the Next.js debugging tool that sees everything">
   <meta property="og:description" content="Server and browser requests, unified logs and breakpoints in server and client components, for any Next.js dev server. Free, no code changes.">
   <meta property="og:url" content="https://themdkaish.github.io/qaisdebugs/">
   <meta property="og:image" content="https://themdkaish.github.io/qaisdebugs/og.png">
@@ -22,7 +22,7 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="qaisdebugs: X-ray for Next.js dev servers">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="qaisdebugs: see everything your Next.js app does">
+  <meta name="twitter:title" content="qaisdebugs: the Next.js debugging tool that sees everything">
   <meta name="twitter:description" content="Server and browser requests, unified logs and breakpoints for Next.js dev servers. Free, no code changes.">
   <meta name="twitter:image" content="https://themdkaish.github.io/qaisdebugs/og.png">
 
@@ -72,117 +72,33 @@
       {
         "@type": "FAQPage",
         "mainEntity": [
-          { "@type": "Question", "name": "Do I need to change my Next.js code?", "acceptedAnswer": { "@type": "Answer", "text": "No. qaisdebugs attaches to the dev server from outside with a Node preload. Your code, config and dependencies stay untouched." } },
-          { "@type": "Question", "name": "Which Next.js versions does qaisdebugs support?", "acceptedAnswer": { "@type": "Answer", "text": "Next.js 13.4 to 16 with the App Router, on webpack or Turbopack." } },
-          { "@type": "Question", "name": "Does qaisdebugs send my data anywhere?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything stays on your machine: the inspector listens on 127.0.0.1 only, and passwords, tokens and cookies are masked before they are recorded." } },
-          { "@type": "Question", "name": "Can Claude use qaisdebugs?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. qaisdebugs includes an MCP server. Add it with: claude mcp add qaisdebugs -- qaisdebugs mcp. Claude can then read requests and logs and set breakpoints." } }
+          {"@type": "Question", "name": "How do I debug a Next.js application?", "acceptedAnswer": {"@type": "Answer", "text": "Work out whether the failing code runs on the server or in the browser, then check its logs, its network calls and its variables. Browser DevTools cover client code; server code needs the terminal, fetch logging and the Node.js inspector. qaisdebugs shows both sides in one place."}},
+          {"@type": "Question", "name": "What is the best tool to debug a Next.js app?", "acceptedAnswer": {"@type": "Answer", "text": "Browser DevTools and React DevTools for the page, the Node.js inspector or VS Code for server breakpoints, and qaisdebugs to see server and browser requests, logs and breakpoints together."}},
+          {"@type": "Question", "name": "Why don't server-side requests show in the browser's Network tab?", "acceptedAnswer": {"@type": "Answer", "text": "Server Components, Route Handlers and Server Actions run inside the Next.js server, so their calls go straight from Node.js to the API and never pass through the browser. qaisdebugs records them where they happen and joins them with what the page did."}},
+          {"@type": "Question", "name": "How do I see server-side fetch and axios requests in Next.js?", "acceptedAnswer": {"@type": "Answer", "text": "Setting logging: { fetches: { fullUrl: true } } in next.config lists fetch calls with URL, status and timing. qaisdebugs records every call, axios, got and node-fetch included, with headers, bodies and the file and line that made it."}},
+          {"@type": "Question", "name": "How do I debug Next.js Server Components?", "acceptedAnswer": {"@type": "Answer", "text": "Their console.log output goes to the terminal, and since Next.js 15 it is also replayed in the browser console. To pause them, start next dev with the Node.js inspector, or click a line in the qaisdebugs Sources view."}},
+          {"@type": "Question", "name": "How do I set breakpoints in Next.js server code?", "acceptedAnswer": {"@type": "Answer", "text": "Start the dev server with NODE_OPTIONS='--inspect' next dev and attach Chrome through chrome://inspect, or use a VS Code launch.json. With qaisdebugs, click a line number in its Sources view and it connects for you."}},
+          {"@type": "Question", "name": "How do I debug Client Components?", "acceptedAnswer": {"@type": "Answer", "text": "Use the browser's DevTools Sources panel and React Developer Tools. With qaisdebugs, qaisdebugs dev opens your app in a Chrome window of its own and connects to it, so a breakpoint you set in the inspector pauses there. Chrome does not allow tools to pause an everyday window."}},
+          {"@type": "Question", "name": "How do I debug Next.js API routes and Route Handlers?", "acceptedAnswer": {"@type": "Answer", "text": "Call the route directly with curl -i, log the incoming request, and pause inside the handler. Check the query parameter names and await params in Next.js 15 and later."}},
+          {"@type": "Question", "name": "How do I debug Next.js Server Actions?", "acceptedAnswer": {"@type": "Answer", "text": "A Server Action is a POST to the current page with a Next-Action header. Its logs go to the terminal, and breakpoints work like any server code. Watch for redirect() inside try/catch and a missing revalidatePath."}},
+          {"@type": "Question", "name": "Where does console.log go in Next.js?", "acceptedAnswer": {"@type": "Answer", "text": "Server code logs to the terminal running next dev; client code logs to the browser console. Client Components log in both during their first render. qaisdebugs shows server and browser logs in one list. Next."}},
+          {"@type": "Question", "name": "How do I fix Next.js hydration errors?", "acceptedAnswer": {"@type": "Answer", "text": "Find what differs between the server and browser render, often dates, random values, browser-only checks or invalid HTML nesting, and render those values after mounting or only in the browser."}},
+          {"@type": "Question", "name": "Do I need to change my Next.js code to use qaisdebugs?", "acceptedAnswer": {"@type": "Answer", "text": "No. qaisdebugs attaches to the dev server from outside with a Node preload. Your code, config and dependencies stay untouched."}},
+          {"@type": "Question", "name": "Which Next.js versions does qaisdebugs support?", "acceptedAnswer": {"@type": "Answer", "text": "Next.js 13.4 to 16 with the App Router, on webpack or Turbopack, with npm, pnpm, yarn or bun."}},
+          {"@type": "Question", "name": "Does qaisdebugs send my data anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "No. Everything stays on your machine. The inspector listens on 127.0.0.1 only, and passwords, tokens and cookies are masked before they are recorded."}},
+          {"@type": "Question", "name": "Does it slow my app down or affect production?", "acceptedAnswer": {"@type": "Answer", "text": "It only runs inside next dev, and only when started through qaisdebugs. Production builds and next start are never touched, and recording happens off the request path."}},
+          {"@type": "Question", "name": "Can Claude or Cursor debug my Next.js app?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. qaisdebugs includes an MCP server: run claude mcp add qaisdebugs -- qaisdebugs mcp, or add the command qaisdebugs mcp in Cursor's MCP settings. The assistant can then read requests and logs and set breakpoints."}},
+          {"@type": "Question", "name": "Is qaisdebugs free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. It is open source under the MIT license, on npm and GitHub."}}
         ]
       }
     ]
   }
   </script>
 
+  <link rel="stylesheet" href="site.css">
   <style>
-    :root {
-      --bg: #070a14;
-      --bg-2: #0d1222;
-      --text: #e8ecf6;
-      --muted: #9aa4bd;
-      --faint: #6b7590;
-      --cyan: #22d3ee;
-      --violet: #a78bfa;
-      --green: #34d399;
-      --amber: #fbbf24;
-      --glass: rgba(255, 255, 255, 0.055);
-      --glass-strong: rgba(255, 255, 255, 0.085);
-      --edge: rgba(255, 255, 255, 0.12);
-      --edge-soft: rgba(255, 255, 255, 0.07);
-      --radius: 22px;
-      --sans: 'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif;
-      --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      font-family: var(--sans);
-      color: var(--text);
-      background: var(--bg);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-    a { color: inherit; }
-    img { max-width: 100%; height: auto; display: block; }
-    figure { margin: 0; }
-    code, pre { font-family: var(--mono); }
-    :not(.install) > code { font-size: 0.88em; color: #c7d2fe; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--edge-soft); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
-
-    /* ---- the backdrop the glass sits on ---------------------------------------------------- */
-    .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: radial-gradient(1200px 700px at 50% -10%, #111a33 0%, var(--bg) 60%); }
-    .backdrop::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-      background-size: 44px 44px;
-      mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 75%);
-    }
-    .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.55; animation: drift 22s ease-in-out infinite alternate; }
-    .orb.cyan { width: 520px; height: 520px; background: var(--cyan); top: -120px; left: -140px; opacity: 0.32; }
-    .orb.violet { width: 600px; height: 600px; background: var(--violet); top: 30%; right: -220px; opacity: 0.28; animation-duration: 28s; }
-    .orb.green { width: 420px; height: 420px; background: var(--green); bottom: -160px; left: 25%; opacity: 0.16; animation-duration: 34s; }
-    @keyframes drift { to { transform: translate(60px, 40px) scale(1.08); } }
-    @media (prefers-reduced-motion: reduce) { .orb { animation: none; } html { scroll-behavior: auto; } }
-
-    /* ---- glass ------------------------------------------------------------------------------ */
-    .glass {
-      background: linear-gradient(145deg, var(--glass-strong), var(--glass));
-      border: 1px solid var(--edge);
-      border-radius: var(--radius);
-      backdrop-filter: blur(22px) saturate(150%);
-      -webkit-backdrop-filter: blur(22px) saturate(150%);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.09);
-    }
-
-    .wrap { width: min(1160px, 100% - 32px); margin-inline: auto; }
-    /* Grid columns may shrink below a long one-line command, which then scrolls in its box. */
     .hero-grid > *, .compare > *, .features > *, .steps > *, .mcp > *, .copy-block > *, .split > *, .cta > * { min-width: 0; max-width: 100%; }
     section { padding: 88px 0; }
-    .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cyan); }
-    h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
-    h2 { font-size: clamp(28px, 4vw, 44px); font-weight: 800; margin-top: 12px; }
-    .lead { color: var(--muted); font-size: clamp(16px, 1.6vw, 19px); max-width: 680px; }
-    .center { text-align: center; }
-    .center .lead { margin-inline: auto; }
-    .gradient-text { background: linear-gradient(100deg, #f8fafc 10%, var(--cyan) 45%, var(--violet) 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-
-    /* ---- nav ---------------------------------------------------------------------------------- */
-    .nav { position: sticky; top: 14px; z-index: 10; margin-top: 14px; }
-    .nav .bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px 10px 18px; border-radius: 999px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; text-decoration: none; letter-spacing: -0.01em; }
-    .brand svg { width: 30px; height: 30px; }
-    .nav-links { display: flex; gap: 6px; align-items: center; }
-    .nav-links a { text-decoration: none; color: var(--muted); font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 999px; transition: color 0.2s, background 0.2s; }
-    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-    .nav-links .pill { color: var(--text); border: 1px solid var(--edge); background: rgba(255,255,255,0.05); }
-    @media (max-width: 760px) { .nav-links .section-link { display: none; } }
-
-    /* ---- buttons and the install line ---------------------------------------------------------- */
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 14px; font-weight: 600; font-size: 15px; text-decoration: none; transition: transform 0.15s, box-shadow 0.2s, background 0.2s; }
-    .btn:hover { transform: translateY(-1px); }
-    .btn.primary { color: #06101a; background: linear-gradient(120deg, var(--cyan), #67e8f9 40%, var(--violet)); box-shadow: 0 10px 30px rgba(34, 211, 238, 0.28); }
-    .btn.ghost { border: 1px solid var(--edge); background: rgba(255,255,255,0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-    .btn svg { width: 18px; height: 18px; }
-
-    .install { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 18px; border-radius: 16px; font-family: var(--mono); font-size: 15px; max-width: 100%; }
-    .install .prompt { color: var(--green); user-select: none; }
-    .install code { white-space: nowrap; overflow-x: auto; flex: 1; text-align: left; scrollbar-width: none; }
-    .copy { flex: none; border: 1px solid var(--edge); background: rgba(255,255,255,0.07); color: var(--text); font: 600 13px var(--sans); padding: 8px 12px; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
-    .copy:hover { background: rgba(255,255,255,0.13); }
-    .copy.done { color: var(--green); border-color: rgba(52, 211, 153, 0.5); }
-    @media (max-width: 420px) { .install { font-size: 13.5px; gap: 8px; } }
 
     /* ---- hero ---------------------------------------------------------------------------------- */
     .hero { padding: 70px 0 40px; }
@@ -274,15 +190,6 @@
     .faq p { margin: 0 0 18px; color: var(--muted); }
 
     .cta { padding: 48px clamp(18px, 4vw, 28px); text-align: center; display: grid; gap: 22px; justify-items: center; }
-
-    footer { padding: 40px 0 56px; color: var(--faint); font-size: 14px; }
-    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
-    footer nav { display: flex; gap: 18px; }
-    footer a { text-decoration: none; color: var(--muted); }
-    footer a:hover { color: var(--text); }
-
-    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 8px; }
-    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .glass { background: rgba(17, 24, 45, 0.92); } }
   </style>
 </head>
 <body>
@@ -298,6 +205,7 @@
         <a class="section-link" href="#features">Features</a>
         <a class="section-link" href="#screens">Screens</a>
         <a class="section-link" href="#mcp">Claude (MCP)</a>
+        <a href="guides/">Guides</a>
         <a class="section-link" href="#faq">FAQ</a>
         <a class="pill" href="https://github.com/themdkaish/qaisdebugs">GitHub</a>
       </nav>
@@ -309,7 +217,7 @@
       <div class="wrap hero-grid">
         <span class="badge glass"><b>New</b> Browser capture and an MCP server for Claude</span>
         <h1 class="gradient-text">qaisdebugs</h1>
-        <p class="tagline">See every request, log and line your Next.js app runs.</p>
+        <p class="tagline">The Next.js debugging tool that sees every request, log and line your app runs.</p>
         <p class="lead">Server and browser network calls, server and browser logs, and breakpoints in Server <em>and</em> Client Components, in one inspector. No SDK, no config, no code changes.</p>
         <div class="install glass" style="width:min(560px,100%)">
           <span class="prompt">$</span><code id="install-cmd">npm install -g qaisdebugs</code>
@@ -336,7 +244,7 @@
     <section id="why">
       <div class="wrap center">
         <span class="eyebrow">Why</span>
-        <h2>The Network tab only sees half the story</h2>
+        <h2>Why debugging Next.js is hard: the Network tab only sees half</h2>
         <p class="lead">In a Next.js app most of the interesting traffic never reaches the browser: Server Components calling your backend, Route Handlers calling third-party APIs, Server Actions and axios running on the server.</p>
         <div class="compare" style="text-align:left">
           <div class="glass without">
@@ -365,7 +273,7 @@
       <div class="wrap">
         <div class="center">
           <span class="eyebrow">Features</span>
-          <h2>Everything your dev server does, on one screen</h2>
+          <h2>Everything you need to debug a Next.js app, on one screen</h2>
         </div>
         <div class="features">
           <article class="feature glass">
@@ -442,7 +350,7 @@
       <div class="wrap">
         <div class="center">
           <span class="eyebrow">Quick start</span>
-          <h2>Running in under a minute</h2>
+          <h2>Start debugging your Next.js app in a minute</h2>
         </div>
         <div class="steps">
           <div class="step glass">
@@ -468,7 +376,7 @@
       <div class="wrap mcp">
         <div class="copy-block">
           <span class="eyebrow">Claude (MCP)</span>
-          <h2>Let Claude debug it with you</h2>
+          <h2>Let Claude debug your Next.js app with you</h2>
           <p class="lead">qaisdebugs includes an MCP server. Claude can read the requests, traces and logs, open your source files, and set breakpoints, wait for the pause and read the variables.</p>
           <div class="install glass"><span class="prompt">$</span><code>claude mcp add qaisdebugs -- qaisdebugs mcp</code><button class="copy" type="button" data-copy="claude mcp add qaisdebugs -- qaisdebugs mcp">Copy</button></div>
           <div class="tools" aria-label="MCP tools">
@@ -516,19 +424,54 @@
       </div>
     </section>
 
+    <section id="guides">
+      <div class="wrap">
+        <div class="center">
+          <span class="eyebrow">Guides</span>
+          <h2>Next.js debugging guides</h2>
+          <p class="lead">How to debug Server Components, API routes, Server Actions, logs, network requests and hydration errors, with the built-in tools and with qaisdebugs.</p>
+        </div>
+        <div class="related" style="margin-top:40px">
+          <!-- guides:start -->
+          <a class="glass" href="guides/how-to-debug-nextjs/">How to debug a Next.js application<span>The full walkthrough: logs, network, server and client breakpoints.</span></a>
+          <a class="glass" href="guides/nextjs-debugging-tools/">The best tools to debug a Next.js app<span>Browser DevTools, React DevTools, the Node inspector, VS Code and more, compared.</span></a>
+          <a class="glass" href="guides/debug-nextjs-server-components/">How to debug Next.js Server Components<span>Logs, breakpoints, data fetching and the common Server Component bugs.</span></a>
+          <a class="glass" href="guides/nextjs-server-side-network-requests/">How to see server-side network requests in Next.js<span>Why the Network tab misses them, and how to see every fetch and axios call.</span></a>
+          <a class="glass" href="guides/debug-nextjs-api-routes/">How to debug Next.js API routes and Route Handlers<span>Call them directly, read the request, pause inside, and the classic mistakes.</span></a>
+          <a class="glass" href="guides/debug-nextjs-server-actions/">How to debug Next.js Server Actions<span>What an action sends, where its errors go, and the mistakes that break it.</span></a>
+          <a class="glass" href="guides/nextjs-breakpoints-vscode-chrome/">Set breakpoints in Next.js with VS Code and Chrome DevTools<span>The --inspect flag, chrome://inspect, launch.json, and why breakpoints do not hit.</span></a>
+          <a class="glass" href="guides/nextjs-logs/">Next.js logs: where console.log goes on the server and in the browser<span>Terminal or browser console, logs in production, and seeing them together.</span></a>
+          <a class="glass" href="guides/debug-nextjs-hydration-errors/">How to debug and fix Next.js hydration errors<span>What hydration mismatches are, the usual causes, and the right fix for each.</span></a>
+          <a class="glass" href="guides/debug-nextjs-with-claude/">Debug a Next.js app with Claude, Cursor and MCP<span>Let an AI assistant read your requests and logs and set breakpoints.</span></a>
+          <!-- guides:end -->
+        </div>
+      </div>
+    </section>
+
     <section id="faq">
       <div class="wrap">
         <div class="center">
           <span class="eyebrow">FAQ</span>
-          <h2>Questions</h2>
+          <h2>Next.js debugging questions</h2>
         </div>
         <div class="faq">
-          <details class="glass" open><summary>Do I need to change my Next.js code?</summary><p>No. qaisdebugs attaches to the dev server from outside with a Node preload. Your code, config and dependencies stay untouched.</p></details>
-          <details class="glass"><summary>Which Next.js versions are supported?</summary><p>Next.js 13.4 to 16 with the App Router, on webpack or Turbopack.</p></details>
-          <details class="glass"><summary>Why can't the browser's DevTools show this?</summary><p>Server Components, Route Handlers and Server Actions run inside the Next.js server, so their calls never pass through the browser. qaisdebugs records them where they happen and joins them with what the page did.</p></details>
-          <details class="glass"><summary>Does it send my data anywhere?</summary><p>No. Everything stays on your machine. The inspector listens on 127.0.0.1 only, and passwords, tokens and cookies are masked before they are recorded.</p></details>
-          <details class="glass"><summary>How do client-side breakpoints work?</summary><p><code>qaisdebugs dev</code> opens your app in a Chrome window of its own and connects to it. Set a breakpoint in the inspector and it pauses there. Chrome does not allow tools to pause an everyday window.</p></details>
-          <details class="glass"><summary>Can Claude use it?</summary><p>Yes. Run <code>claude mcp add qaisdebugs -- qaisdebugs mcp</code>. Other MCP clients such as Cursor use the same command, <code>qaisdebugs mcp</code>.</p></details>
+          <details class="glass" open><summary>How do I debug a Next.js application?</summary><p>Work out whether the failing code runs on the server or in the browser, then check its logs, its network calls and its variables. Browser DevTools cover client code; server code needs the terminal, fetch logging and the Node.js inspector. qaisdebugs shows both sides in one place. <a href="guides/how-to-debug-nextjs/">Read the full guide</a>.</p></details>
+          <details class="glass"><summary>What is the best tool to debug a Next.js app?</summary><p>Browser DevTools and React DevTools for the page, the Node.js inspector or VS Code for server breakpoints, and qaisdebugs to see server and browser requests, logs and breakpoints together. <a href="guides/nextjs-debugging-tools/">See the tools compared</a>.</p></details>
+          <details class="glass"><summary>Why don't server-side requests show in the browser's Network tab?</summary><p>Server Components, Route Handlers and Server Actions run inside the Next.js server, so their calls go straight from Node.js to the API and never pass through the browser. qaisdebugs records them where they happen and joins them with what the page did. <a href="guides/nextjs-server-side-network-requests/">More on server-side requests</a>.</p></details>
+          <details class="glass"><summary>How do I see server-side fetch and axios requests in Next.js?</summary><p>Setting <code>logging: { fetches: { fullUrl: true } }</code> in <code>next.config</code> lists <code>fetch</code> calls with URL, status and timing. qaisdebugs records every call, axios, got and node-fetch included, with headers, bodies and the file and line that made it.</p></details>
+          <details class="glass"><summary>How do I debug Next.js Server Components?</summary><p>Their <code>console.log</code> output goes to the terminal, and since Next.js 15 it is also replayed in the browser console. To pause them, start <code>next dev</code> with the Node.js inspector, or click a line in the qaisdebugs Sources view. <a href="guides/debug-nextjs-server-components/">Server Components guide</a>.</p></details>
+          <details class="glass"><summary>How do I set breakpoints in Next.js server code?</summary><p>Start the dev server with <code>NODE_OPTIONS='--inspect' next dev</code> and attach Chrome through <code>chrome://inspect</code>, or use a VS Code <code>launch.json</code>. With qaisdebugs, click a line number in its Sources view and it connects for you. <a href="guides/nextjs-breakpoints-vscode-chrome/">VS Code and Chrome guide</a>.</p></details>
+          <details class="glass"><summary>How do I debug Client Components?</summary><p>Use the browser's DevTools Sources panel and React Developer Tools. With qaisdebugs, <code>qaisdebugs dev</code> opens your app in a Chrome window of its own and connects to it, so a breakpoint you set in the inspector pauses there. Chrome does not allow tools to pause an everyday window.</p></details>
+          <details class="glass"><summary>How do I debug Next.js API routes and Route Handlers?</summary><p>Call the route directly with <code>curl -i</code>, log the incoming request, and pause inside the handler. Check the query parameter names and await <code>params</code> in Next.js 15 and later. <a href="guides/debug-nextjs-api-routes/">API routes guide</a>.</p></details>
+          <details class="glass"><summary>How do I debug Next.js Server Actions?</summary><p>A Server Action is a POST to the current page with a <code>Next-Action</code> header. Its logs go to the terminal, and breakpoints work like any server code. Watch for <code>redirect()</code> inside <code>try/catch</code> and a missing <code>revalidatePath</code>. <a href="guides/debug-nextjs-server-actions/">Server Actions guide</a>.</p></details>
+          <details class="glass"><summary>Where does console.log go in Next.js?</summary><p>Server code logs to the terminal running <code>next dev</code>; client code logs to the browser console. Client Components log in both during their first render. qaisdebugs shows server and browser logs in one list. <a href="guides/nextjs-logs/">Next.js logs guide</a>.</p></details>
+          <details class="glass"><summary>How do I fix Next.js hydration errors?</summary><p>Find what differs between the server and browser render, often dates, random values, browser-only checks or invalid HTML nesting, and render those values after mounting or only in the browser. <a href="guides/debug-nextjs-hydration-errors/">Hydration errors guide</a>.</p></details>
+          <details class="glass"><summary>Do I need to change my Next.js code to use qaisdebugs?</summary><p>No. qaisdebugs attaches to the dev server from outside with a Node preload. Your code, config and dependencies stay untouched.</p></details>
+          <details class="glass"><summary>Which Next.js versions does qaisdebugs support?</summary><p>Next.js 13.4 to 16 with the App Router, on webpack or Turbopack, with npm, pnpm, yarn or bun.</p></details>
+          <details class="glass"><summary>Does qaisdebugs send my data anywhere?</summary><p>No. Everything stays on your machine. The inspector listens on 127.0.0.1 only, and passwords, tokens and cookies are masked before they are recorded.</p></details>
+          <details class="glass"><summary>Does it slow my app down or affect production?</summary><p>It only runs inside <code>next dev</code>, and only when started through qaisdebugs. Production builds and <code>next start</code> are never touched, and recording happens off the request path.</p></details>
+          <details class="glass"><summary>Can Claude or Cursor debug my Next.js app?</summary><p>Yes. qaisdebugs includes an MCP server: run <code>claude mcp add qaisdebugs -- qaisdebugs mcp</code>, or add the command <code>qaisdebugs mcp</code> in Cursor's MCP settings. The assistant can then read requests and logs and set breakpoints. <a href="guides/debug-nextjs-with-claude/">MCP guide</a>.</p></details>
+          <details class="glass"><summary>Is qaisdebugs free?</summary><p>Yes. It is open source under the MIT license, on npm and GitHub.</p></details>
         </div>
       </div>
     </section>
@@ -553,6 +496,7 @@
       <nav aria-label="Footer">
         <a href="https://www.npmjs.com/package/qaisdebugs">npm</a>
         <a href="https://github.com/themdkaish/qaisdebugs">GitHub</a>
+        <a href="guides/">Guides</a>
         <a href="https://github.com/themdkaish/qaisdebugs/issues">Report an issue</a>
       </nav>
     </div>

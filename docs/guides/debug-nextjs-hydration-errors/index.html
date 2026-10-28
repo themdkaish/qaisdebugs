@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How to debug and fix Next.js hydration errors | qaisdebugs</title>
+  <meta name="description" content="Fix &quot;Hydration failed&quot; errors in Next.js: what causes hydration mismatches, how to find the component, and the right fix for each cause.">
+  <meta name="author" content="Mahammad Kaish">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href="https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-hydration-errors/">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="qaisdebugs">
+  <meta property="og:title" content="How to debug and fix Next.js hydration errors">
+  <meta property="og:description" content="Fix &quot;Hydration failed&quot; errors in Next.js: what causes hydration mismatches, how to find the component, and the right fix for each cause.">
+  <meta property="og:url" content="https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-hydration-errors/">
+  <meta property="og:image" content="https://themdkaish.github.io/qaisdebugs/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to debug and fix Next.js hydration errors">
+  <meta name="twitter:description" content="Fix &quot;Hydration failed&quot; errors in Next.js: what causes hydration mismatches, how to find the component, and the right fix for each cause.">
+  <meta name="twitter:image" content="https://themdkaish.github.io/qaisdebugs/og.png">
+
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../site.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "How to debug and fix Next.js hydration errors",
+      "description": "Fix \"Hydration failed\" errors in Next.js: what causes hydration mismatches, how to find the component, and the right fix for each cause.",
+      "url": "https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-hydration-errors/",
+      "mainEntityOfPage": "https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-hydration-errors/",
+      "image": "https://themdkaish.github.io/qaisdebugs/og.png",
+      "datePublished": "2026-10-28",
+      "dateModified": "2026-10-28",
+      "inLanguage": "en",
+      "proficiencyLevel": "Beginner",
+      "about": [
+        {
+          "@type": "Thing",
+          "name": "Next.js"
+        },
+        {
+          "@type": "Thing",
+          "name": "Debugging"
+        }
+      ],
+      "author": {
+        "@type": "Person",
+        "name": "Mahammad Kaish",
+        "url": "https://github.com/themdkaish"
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "Mahammad Kaish",
+        "url": "https://github.com/themdkaish"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "qaisdebugs",
+          "item": "https://themdkaish.github.io/qaisdebugs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Guides",
+          "item": "https://themdkaish.github.io/qaisdebugs/guides/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "How to debug and fix Next.js hydration errors",
+          "item": "https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-hydration-errors/"
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"><div class="orb cyan"></div><div class="orb violet"></div><div class="orb green"></div></div>
+
+  <header class="wrap nav">
+    <div class="bar glass">
+      <a class="brand" href="../../" aria-label="qaisdebugs home">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="16" fill="#0f172a" stroke="url(#m)" stroke-width="2.5"/><g fill="none" stroke="url(#m)" stroke-width="3.6" stroke-linecap="round"><ellipse cx="32" cy="34" rx="10" ry="13"/><path d="M32 21v26M22 29h-7M22 37h-8M23 44l-6 5M42 29h7M42 37h8M41 44l6 5M27 20l-3-5M37 20l3-5"/></g><rect x="9" y="32" width="46" height="2.6" rx="1.3" fill="#22d3ee"/></svg>
+        qaisdebugs
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="../../guides/">Guides</a>
+        <a class="section-link" href="../../#features">Features</a>
+        <a class="section-link" href="../../#faq">FAQ</a>
+        <a class="pill" href="https://github.com/themdkaish/qaisdebugs">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="article">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../../">qaisdebugs</a> / <a href="../">Guides</a> /</nav>
+    <h1 class="gradient-text">How to debug and fix Next.js hydration errors</h1>
+    <p class="meta">Updated 28 October 2026 · 5 min read</p>
+    <p class="lead">A hydration error means the HTML the server rendered is different from what React rendered in the browser. The fix is to find what differs, and make it the same or render it only in the browser.</p>
+
+    <nav class="toc glass" aria-label="On this page">
+      <b>On this page</b>
+      <ol>
+        <li><a href="#what">What a hydration error is</a></li>
+        <li><a href="#causes">The usual causes</a></li>
+        <li><a href="#fixes">The fixes</a></li>
+        <li><a href="#find">Finding the component</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="what">What a hydration error is</h2>
+    <p>Next.js renders your page to HTML on the server. In the browser, React then <em>hydrates</em> that HTML: it renders the same components again and attaches event handlers. If the two renders produce different output, React reports a hydration mismatch and may re-render the whole tree on the client. Recent Next.js versions show a diff of the server and client output in the error overlay, which usually points straight at the problem.</p>
+
+    <h2 id="causes">The usual causes</h2>
+    <ul>
+      <li><strong>Values that change between renders:</strong> <code>new Date()</code>, <code>Date.now()</code>, <code>Math.random()</code>, generated IDs.</li>
+      <li><strong>Browser-only checks during render:</strong> <code>typeof window !== 'undefined'</code>, <code>localStorage</code>, media queries.</li>
+      <li><strong>Locale and time zone differences:</strong> <code>toLocaleString()</code> on a server in UTC and a browser in another zone.</li>
+      <li><strong>Invalid HTML nesting:</strong> a <code>&lt;div&gt;</code> inside a <code>&lt;p&gt;</code>, or a link inside a link. The browser fixes the HTML before React sees it.</li>
+      <li><strong>Browser extensions</strong> that change the page before React hydrates. Test in a private window.</li>
+    </ul>
+
+    <h2 id="fixes">The fixes</h2>
+    <h3>Render browser-only values after mounting</h3>
+    <pre class="code glass"><code>'use client';
+import { useEffect, useState } from 'react';
+
+export function LocalTime() {
+  const [time, setTime] = useState&lt;string&gt;();
+  useEffect(() =&gt; setTime(new Date().toLocaleTimeString()), []);
+  return &lt;span&gt;{time ?? '…'}&lt;/span&gt;;
+}</code></pre>
+    <h3>Skip server rendering for a browser-only component</h3>
+    <pre class="code glass"><code>'use client';
+import dynamic from 'next/dynamic';
+
+const Map = dynamic(() =&gt; import('./Map'), { ssr: false });</code></pre>
+    <h3>Silence one expected difference</h3>
+    <p>For a single element whose text is meant to differ, such as a timestamp, add <code>suppressHydrationWarning</code> to that element. It only applies one level deep, so do not use it to hide real bugs.</p>
+    <h3>Fix the HTML</h3>
+    <p>Change the outer <code>&lt;p&gt;</code> to a <code>&lt;div&gt;</code>, or move the nested block outside it.</p>
+
+    <h2 id="find">Finding the component</h2>
+    <p>Read the diff in the overlay, then search for the text it shows. If the stack is not enough, pause on the error: in Chrome DevTools enable <em>Pause on uncaught exceptions</em>, or in <a href="../../">qaisdebugs</a> turn on <em>On exceptions</em> in the Sources view, which also records the error in its Logs view with the file it came from.</p>
+
+    <aside class="guide-cta glass">
+      <h2>Debug your Next.js app on one screen</h2>
+      <p class="lead">qaisdebugs shows every server and browser request, every log line, and lets you pause Server and Client Components. Free, no code changes.</p>
+      <div class="install glass" style="width:min(460px,100%)"><span class="prompt">$</span><code>npm install -g qaisdebugs</code></div>
+      <p class="lead">Then run <code>qaisdebugs dev</code> in your app's folder and open <code>http://127.0.0.1:4983</code>.</p>
+      <a class="btn primary" href="../../">See how it works</a>
+    </aside>
+
+    <section aria-labelledby="related">
+      <h2 id="related">Related guides</h2>
+      <div class="related">
+        <a class="glass" href="../../guides/how-to-debug-nextjs/">How to debug a Next.js application<span>The full walkthrough: logs, network, server and client breakpoints.</span></a>
+        <a class="glass" href="../../guides/nextjs-logs/">Next.js logs: where console.log goes on the server and in the browser<span>Terminal or browser console, logs in production, and seeing them together.</span></a>
+        <a class="glass" href="../../guides/nextjs-breakpoints-vscode-chrome/">Set breakpoints in Next.js with VS Code and Chrome DevTools<span>The --inspect flag, chrome://inspect, launch.json, and why breakpoints do not hit.</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>qaisdebugs · MIT © Mahammad Kaish</span>
+      <nav aria-label="Footer">
+        <a href="../../guides/">Guides</a>
+        <a href="https://www.npmjs.com/package/qaisdebugs">npm</a>
+        <a href="https://github.com/themdkaish/qaisdebugs">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

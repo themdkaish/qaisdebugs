@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How to debug a Next.js app: server, client and network | qaisdebugs</title>
+  <meta name="description" content="A step-by-step guide to debugging a Next.js app: server and client breakpoints, server-side network requests, logs, Route Handlers and Server Actions.">
+  <meta name="author" content="Mahammad Kaish">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href="https://themdkaish.github.io/qaisdebugs/guides/how-to-debug-nextjs/">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="qaisdebugs">
+  <meta property="og:title" content="How to debug a Next.js application">
+  <meta property="og:description" content="A step-by-step guide to debugging a Next.js app: server and client breakpoints, server-side network requests, logs, Route Handlers and Server Actions.">
+  <meta property="og:url" content="https://themdkaish.github.io/qaisdebugs/guides/how-to-debug-nextjs/">
+  <meta property="og:image" content="https://themdkaish.github.io/qaisdebugs/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to debug a Next.js application">
+  <meta name="twitter:description" content="A step-by-step guide to debugging a Next.js app: server and client breakpoints, server-side network requests, logs, Route Handlers and Server Actions.">
+  <meta name="twitter:image" content="https://themdkaish.github.io/qaisdebugs/og.png">
+
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../site.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "How to debug a Next.js application",
+      "description": "A step-by-step guide to debugging a Next.js app: server and client breakpoints, server-side network requests, logs, Route Handlers and Server Actions.",
+      "url": "https://themdkaish.github.io/qaisdebugs/guides/how-to-debug-nextjs/",
+      "mainEntityOfPage": "https://themdkaish.github.io/qaisdebugs/guides/how-to-debug-nextjs/",
+      "image": "https://themdkaish.github.io/qaisdebugs/og.png",
+      "datePublished": "2026-10-28",
+      "dateModified": "2026-10-28",
+      "inLanguage": "en",
+      "proficiencyLevel": "Beginner",
+      "about": [
+        {
+          "@type": "Thing",
+          "name": "Next.js"
+        },
+        {
+          "@type": "Thing",
+          "name": "Debugging"
+        }
+      ],
+      "author": {
+        "@type": "Person",
+        "name": "Mahammad Kaish",
+        "url": "https://github.com/themdkaish"
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "Mahammad Kaish",
+        "url": "https://github.com/themdkaish"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "qaisdebugs",
+          "item": "https://themdkaish.github.io/qaisdebugs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Guides",
+          "item": "https://themdkaish.github.io/qaisdebugs/guides/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "How to debug a Next.js application",
+          "item": "https://themdkaish.github.io/qaisdebugs/guides/how-to-debug-nextjs/"
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"><div class="orb cyan"></div><div class="orb violet"></div><div class="orb green"></div></div>
+
+  <header class="wrap nav">
+    <div class="bar glass">
+      <a class="brand" href="../../" aria-label="qaisdebugs home">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="16" fill="#0f172a" stroke="url(#m)" stroke-width="2.5"/><g fill="none" stroke="url(#m)" stroke-width="3.6" stroke-linecap="round"><ellipse cx="32" cy="34" rx="10" ry="13"/><path d="M32 21v26M22 29h-7M22 37h-8M23 44l-6 5M42 29h7M42 37h8M41 44l6 5M27 20l-3-5M37 20l3-5"/></g><rect x="9" y="32" width="46" height="2.6" rx="1.3" fill="#22d3ee"/></svg>
+        qaisdebugs
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="../../guides/">Guides</a>
+        <a class="section-link" href="../../#features">Features</a>
+        <a class="section-link" href="../../#faq">FAQ</a>
+        <a class="pill" href="https://github.com/themdkaish/qaisdebugs">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="article">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../../">qaisdebugs</a> / <a href="../">Guides</a> /</nav>
+    <h1 class="gradient-text">How to debug a Next.js application</h1>
+    <p class="meta">Updated 28 October 2026 · 8 min read</p>
+    <p class="lead">Debugging Next.js is harder than debugging a plain React app because your code runs in two places: the Node.js server and the browser. This guide shows where each kind of bug shows up, and how to see logs, network calls and variables on both sides.</p>
+
+    <nav class="toc glass" aria-label="On this page">
+      <b>On this page</b>
+      <ol>
+        <li><a href="#where">First, work out where the code runs</a></li>
+        <li><a href="#logs">Step 1: read the logs in the right place</a></li>
+        <li><a href="#network">Step 2: check the network, on both sides</a></li>
+        <li><a href="#server-breakpoints">Step 3: pause server code with breakpoints</a></li>
+        <li><a href="#client-breakpoints">Step 4: pause client code</a></li>
+        <li><a href="#routes-actions">Step 5: Route Handlers and Server Actions</a></li>
+        <li><a href="#errors">Step 6: read the error overlay and the stack</a></li>
+        <li><a href="#one-screen">Doing it all from one screen</a></li>
+        <li><a href="#checklist">A quick checklist</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="where">First, work out where the code runs</h2>
+    <p>Almost every confusing Next.js bug comes down to looking in the wrong place. With the App Router:</p>
+    <ul>
+      <li><strong>On the server:</strong> Server Components (the default in <code>app/</code>), Route Handlers (<code>route.ts</code>), Server Actions (<code>'use server'</code>), <code>generateMetadata</code>, and middleware (<code>proxy.ts</code> since Next.js 16).</li>
+      <li><strong>In the browser:</strong> components marked <code>'use client'</code> after they hydrate, their event handlers and their effects.</li>
+      <li><strong>Both:</strong> Client Components also render once on the server to produce the first HTML. That is why a client component can crash on the server with <code>window is not defined</code>.</li>
+    </ul>
+    <div class="table-scroll glass"><table>
+      <thead><tr><th>You see</th><th>Look here first</th></tr></thead>
+      <tbody>
+        <tr><td>Wrong or missing data on the page</td><td>Server network calls and server logs</td></tr>
+        <tr><td>A button or form does nothing</td><td>Browser console and Network tab, then the Server Action or Route Handler</td></tr>
+        <tr><td>Hydration error</td><td>The error overlay's diff, then the component it names</td></tr>
+        <tr><td>500 error or blank page</td><td>The terminal running <code>next dev</code></td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="logs">Step 1: read the logs in the right place</h2>
+    <p><code>console.log</code> in server code prints to the <strong>terminal</strong> running <code>next dev</code>, not the browser. Logs from client code print to the <strong>browser console</strong>. Since Next.js 15, logs from Server Components are also replayed in the browser console with a <em>Server</em> label, but Route Handlers and Server Actions still only log to the terminal.</p>
+    <p>Keeping two windows side by side works for small apps. Once several requests run at once, it gets hard to tell which log line belongs to which page load. See <a href="../nextjs-logs/">Next.js logs</a> for the details.</p>
+
+    <h2 id="network">Step 2: check the network, on both sides</h2>
+    <p>The browser's Network tab shows what the <em>page</em> requested. It never shows the calls your server makes to your backend or third-party APIs while rendering. For those, Next.js can log <code>fetch</code> calls in the terminal:</p>
+    <pre class="code glass"><code>// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  logging: { fetches: { fullUrl: true } },
+};
+
+export default nextConfig;</code></pre>
+    <p>That prints each <code>fetch</code> with its URL, status, cache result and duration. It does not show headers or bodies, and it misses axios, got and any other client. <a href="../nextjs-server-side-network-requests/">Seeing server-side requests</a> covers the alternatives.</p>
+
+    <h2 id="server-breakpoints">Step 3: pause server code with breakpoints</h2>
+    <p>Start the dev server with the Node.js inspector turned on:</p>
+    <pre class="code glass"><code>NODE_OPTIONS='--inspect' npx next dev</code></pre>
+    <p>Recent Next.js versions also accept <code>next dev --inspect</code>. Then open <code>chrome://inspect</code> in Chrome, click <strong>Open dedicated DevTools for Node</strong> (or <em>inspect</em> under Remote Target), and find your file with <kbd>Cmd/Ctrl + P</kbd>. Click a line number to set a breakpoint, then load the page. A <code>debugger;</code> statement in your code works too.</p>
+    <div class="note glass"><p>A breakpoint in a file Next.js has not compiled yet will not bind. Load a page that uses the file once, then set it again.</p></div>
+    <p>VS Code users can do the same with a <code>launch.json</code>: see <a href="../nextjs-breakpoints-vscode-chrome/">breakpoints in VS Code and Chrome</a>.</p>
+
+    <h2 id="client-breakpoints">Step 4: pause client code</h2>
+    <p>Open the browser's DevTools, go to <strong>Sources</strong>, press <kbd>Cmd/Ctrl + P</kbd> and type your component's file name. Source maps are on in development, so you see your TypeScript, not the bundle. Install <strong>React Developer Tools</strong> to read props, state and hooks of any component.</p>
+
+    <h2 id="routes-actions">Step 5: Route Handlers and Server Actions</h2>
+    <p>These are server code reached from the browser, so you need both halves: what the browser sent, and what the server did with it. Call a Route Handler directly with <code>curl -i</code> to rule out the UI, and log or pause inside it. The details are in <a href="../debug-nextjs-api-routes/">debugging API routes</a> and <a href="../debug-nextjs-server-actions/">debugging Server Actions</a>.</p>
+
+    <h2 id="errors">Step 6: read the error overlay and the stack</h2>
+    <p>In development, Next.js shows runtime errors in an overlay with a source-mapped stack. Click a frame to open it in your editor. In production, errors thrown on the server are replaced with a generic message and a <code>digest</code>; search your server logs for that digest to find the real error.</p>
+
+    <h2 id="one-screen">Doing it all from one screen</h2>
+    <p><a href="../../">qaisdebugs</a> puts these steps in one inspector. Run <code>qaisdebugs dev</code> instead of <code>npm run dev</code> and you get:</p>
+    <ul>
+      <li>every browser <em>and</em> server request, with headers, bodies, timing and the file and line that made it, nested under the page load that caused it;</li>
+      <li>server and browser logs in one list, each tied to its request;</li>
+      <li>breakpoints in Server and Client Components with a click on the line number, no <code>--inspect</code> or <code>launch.json</code>.</li>
+    </ul>
+
+    <h2 id="checklist">A quick checklist</h2>
+    <ol>
+      <li>Decide whether the failing code runs on the server, in the browser, or both.</li>
+      <li>Read the terminal and the browser console.</li>
+      <li>Check what the browser sent and what the server called.</li>
+      <li>Pause on the line where the data first goes wrong and read the variables.</li>
+      <li>Fix it, reload, and confirm the request and logs look right.</li>
+    </ol>
+
+    <aside class="guide-cta glass">
+      <h2>Debug your Next.js app on one screen</h2>
+      <p class="lead">qaisdebugs shows every server and browser request, every log line, and lets you pause Server and Client Components. Free, no code changes.</p>
+      <div class="install glass" style="width:min(460px,100%)"><span class="prompt">$</span><code>npm install -g qaisdebugs</code></div>
+      <p class="lead">Then run <code>qaisdebugs dev</code> in your app's folder and open <code>http://127.0.0.1:4983</code>.</p>
+      <a class="btn primary" href="../../">See how it works</a>
+    </aside>
+
+    <section aria-labelledby="related">
+      <h2 id="related">Related guides</h2>
+      <div class="related">
+        <a class="glass" href="../../guides/nextjs-debugging-tools/">The best tools to debug a Next.js app<span>Browser DevTools, React DevTools, the Node inspector, VS Code and more, compared.</span></a>
+        <a class="glass" href="../../guides/nextjs-server-side-network-requests/">How to see server-side network requests in Next.js<span>Why the Network tab misses them, and how to see every fetch and axios call.</span></a>
+        <a class="glass" href="../../guides/nextjs-breakpoints-vscode-chrome/">Set breakpoints in Next.js with VS Code and Chrome DevTools<span>The --inspect flag, chrome://inspect, launch.json, and why breakpoints do not hit.</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>qaisdebugs · MIT © Mahammad Kaish</span>
+      <nav aria-label="Footer">
+        <a href="../../guides/">Guides</a>
+        <a href="https://www.npmjs.com/package/qaisdebugs">npm</a>
+        <a href="https://github.com/themdkaish/qaisdebugs">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

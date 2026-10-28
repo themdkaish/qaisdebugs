@@ -3,7 +3,73 @@
   <url>
     <loc>https://themdkaish.github.io/qaisdebugs/</loc>
     <lastmod>2026-10-28</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>monthly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/how-to-debug-nextjs/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/nextjs-debugging-tools/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-server-components/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/nextjs-server-side-network-requests/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-api-routes/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-server-actions/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/nextjs-breakpoints-vscode-chrome/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/nextjs-logs/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-hydration-errors/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://themdkaish.github.io/qaisdebugs/guides/debug-nextjs-with-claude/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>

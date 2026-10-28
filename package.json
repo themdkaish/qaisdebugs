@@ -63,6 +63,7 @@
     "build:browser": "vite build --config browser/vite.config.ts",
     "build:mcp": "vite build --config mcp/vite.config.ts",
     "build:ui": "vite build --config ui/vite.config.ts",
+    "build:site": "node site/build-guides.mjs",
     "dev:ui": "vite --config ui/vite.config.ts",
     "start": "node bin/qaisdebugs.mjs start",
     "test": "vitest run",

@@ -23,6 +23,7 @@
   <a href="#debug-with-claude-mcp">Debug with Claude (MCP)</a> ·
   <a href="#configuration">Configuration</a> ·
   <a href="#faq">FAQ</a> ·
+  <a href="https://themdkaish.github.io/qaisdebugs/">Website</a> ·
   <a href="https://github.com/themdkaish/qaisdebugs">GitHub</a>
 </p>
 
